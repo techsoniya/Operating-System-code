@@ -2,71 +2,59 @@
 #include<stdlib.h>
 #include<pthread.h>
 #include<semaphore.h>
-#define num_philosophers 5
-#define num_chopsticks 5
-void dine(int n);
-pthread_t philosopher[num_philosophers];
-pthread_mutex_t chopstick[num_chopsticks];
+#include<unistd.h>
 
-int main()
-{
-    //define counter var i and status_message
-    int i, status_message;
-    void *msg;
-    //initialize the semaphore array
-    for(i=1;i<num_chopsticks;i++)
-    {
-        status_message=pthread_mutex_init(&chopstick[i],NULL);
-        //checkl if the mutex is initialized successfully
-        if(status_message==-1)
-        {
-            printf("\n Mutex initialization failed");
-            exit(1);
-        }
-    }
-    //run the philosopher threads using *dine() function
-    for(i=1;i<=num_philosophers;i++)
-    {
-        status_message=pthread_create(&philosopher[i],NULL,(void*)dine,(int*)i);
-        if(status_message!=0)
-        {
-            printf("\n Thread creation error\n");
-            exit(1);
-        }
-    }
-    //wait for all philosopher threads to complete executing (finish dining) before closing the program
-    for(i=1;i<num_philosopher[i];i++)
-    {
-        status_message=pthread_join(philosopher[i],&msg);
-        if(status_message!=0)
-        {
-        printf("\n Thread join failed\n");
-        exit(1);
-        }
+sem_t room;
+sem_t chopstick[5];
 
-    }
-    for(i=1;i<=num_chopsticks;i++)
-    {
-        status_message=pthread_mutex_destroy(&chopstick[i]);
-        if(status_message!=0)
-        {
-            printf("\n mutex destroyed\n");
-            exit(1);
-        }
-    }
-    return 0;
+void *philosopher(void *);
+void eat(int);
+
+void eat(int phil){
+	printf("\nPhilosopher %d is eating",phil);
 }
-void dine(int n)
-{
-    printf("\n Philosopher %d is thinking",n);
-    //philosopher picks up the left chopstick(wait)
-    pthread_mutex_lock(&chopstick[n]);
-    //philosopher picks up the right chopstick(wait)
-    pthread_mutex_lock(&chopstick[(n+1)%num_chopsticks]);
-    //after picking up both the chopstick philosopher starts eating
-    printf("\n Philosopher %d is eating",n);
-    sleep(3);
-    pthread_mutex_unlock(&chopstick[n]);
-    pthread_mutex_unlock(&chopstick[n+1%num_chopsticks]);
-    printf("\nPhilosopher %d finished eating",n);
+
+int main() {
+	int i,a[5];
+	pthread_t tid[5];     
+	sem_init(&room,0,4);
+	for(i=0;i<5;i++)        
+		sem_init(&chopstick[i],0,1); 
+		
+	for(i=0;i<5;i++){
+		a[i]=i;
+		pthread_create(&tid[i],NULL,philosopher,(void *)&a[i]); 
+	}
+	for(i=0;i<5;i++)
+		pthread_join(tid[i],NULL);
 }
+
+void *philosopher(void *num) {
+	int phil=*(int *)num;
+	sem_wait(&room); 
+	printf("\nPhilosopher %d has entered room",phil);
+	sem_wait(&chopstick[phil]);
+	sem_wait(&chopstick[(phil+1)%5]);
+	eat(phil);
+	sleep(2);
+	printf("\nPhilosopher %d has finished eating",phil);
+	sem_post(&chopstick[(phil+1)%5]);
+	sem_post(&chopstick[phil]);
+	sem_post(&room);
+}
+
+/*Philosopher 0 has entered room
+Philosopher 1 has entered room
+Philosopher 1 is eating
+Philosopher 3 has entered room
+Philosopher 3 is eating
+Philosopher 2 has entered room
+Philosopher 1 has finished eating
+Philosopher 3 has finished eating
+Philosopher 0 is eating
+Philosopher 4 has entered room
+Philosopher 2 is eating
+Philosopher 0 has finished eating
+Philosopher 2 has finished eating
+Philosopher 4 is eating
+Philosopher 4 has finished eating*/
